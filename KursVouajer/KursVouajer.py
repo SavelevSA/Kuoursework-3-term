@@ -1,11 +1,10 @@
-# -*- coding: cp1251 -*-
-import pygame
+п»їimport pygame
 import itertools
 import tkinter as tk
 from tkinter import filedialog
 import math
 
-# Константы
+# РљРѕРЅСЃС‚Р°РЅС‚С‹
 WIDTH, HEIGHT = 800, 600
 NODE_RADIUS = 20
 FONT_SIZE = 18
@@ -17,13 +16,13 @@ NODE_COLOR = (0, 0, 255)
 TEXT_COLOR = (0, 255, 0)
 BACKGROUND_COLOR = (30, 30, 30)
 
-# Инициализация Pygame
+# РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Pygame
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Визуализация TSP")
+pygame.display.set_caption("Р’РёР·СѓР°Р»РёР·Р°С†РёСЏ TSP")
 font = pygame.font.Font(None, FONT_SIZE)
 
-# Чтение файла с матрицей
+# Р§С‚РµРЅРёРµ С„Р°Р№Р»Р° СЃ РјР°С‚СЂРёС†РµР№
 def read_distance_matrix(file_path):
     with open(file_path, 'r') as file:
         matrix = []
@@ -32,11 +31,11 @@ def read_distance_matrix(file_path):
             matrix.append([float('inf') if x == 'inf' else int(x) for x in row])
         return matrix
 
-# Рисование графа
+# Р РёСЃРѕРІР°РЅРёРµ РіСЂР°С„Р°
 def draw_graph(matrix, node_positions, visited_edges, current_edges=None, current_nodes=None, final_path_edges=None, step_info=None):
     screen.fill(BACKGROUND_COLOR)
 
-    # Рисуем рёбра
+    # Р РёСЃСѓРµРј СЂС‘Р±СЂР°
     for i in range(len(matrix)):
         for j in range(len(matrix)):
             if i != j and matrix[i][j] != float('inf'):
@@ -49,20 +48,20 @@ def draw_graph(matrix, node_positions, visited_edges, current_edges=None, curren
                 else:
                     color = LINE_COLOR
                 pygame.draw.line(screen, color, node_positions[i], node_positions[j], 2)
-                # Вес ребра
+                # Р’РµСЃ СЂРµР±СЂР°
                 mid_x = (node_positions[i][0] + node_positions[j][0]) // 2
                 mid_y = (node_positions[i][1] + node_positions[j][1]) // 2
                 weight_text = font.render(str(matrix[i][j]), True, TEXT_COLOR)
                 screen.blit(weight_text, (mid_x, mid_y))
 
-    # Рисуем вершины
+    # Р РёСЃСѓРµРј РІРµСЂС€РёРЅС‹
     for i, pos in enumerate(node_positions):
         color = CURRENT_NODE_COLOR if current_nodes and i in current_nodes else NODE_COLOR
         pygame.draw.circle(screen, color, pos, NODE_RADIUS)
         node_label = font.render(str(i), True, TEXT_COLOR if final_path_edges else (255, 255, 255))
         screen.blit(node_label, (pos[0] - NODE_RADIUS // 2, pos[1] - NODE_RADIUS // 2))
 
-    # Отображаем информацию о текущем шаге
+    # РћС‚РѕР±СЂР°Р¶Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ С‚РµРєСѓС‰РµРј С€Р°РіРµ
     if step_info:
         y_offset = 10
         for line in step_info:
@@ -72,7 +71,7 @@ def draw_graph(matrix, node_positions, visited_edges, current_edges=None, curren
 
     pygame.display.flip()
 
-# Генерация позиций узлов
+# Р“РµРЅРµСЂР°С†РёСЏ РїРѕР·РёС†РёР№ СѓР·Р»РѕРІ
 def generate_node_positions(n, width, height):
     radius = min(width, height) // 3
     center = (width // 2, height // 2)
@@ -83,16 +82,16 @@ def generate_node_positions(n, width, height):
     ]
     return positions
 
-# Загрузка матрицы через диалог
+# Р—Р°РіСЂСѓР·РєР° РјР°С‚СЂРёС†С‹ С‡РµСЂРµР· РґРёР°Р»РѕРі
 def load_matrix_via_dialog():
     tk.Tk().withdraw()
-    file_path = filedialog.askopenfilename(title="Выберите файл с матрицей",
+    file_path = filedialog.askopenfilename(title="Р’С‹Р±РµСЂРёС‚Рµ С„Р°Р№Р» СЃ РјР°С‚СЂРёС†РµР№",
                                            filetypes=(("Text files", "*.txt"), ("All files", "*.*")))
     if file_path:
         return read_distance_matrix(file_path)
     return None
 
-# Реализация алгоритма с визуализацией
+# Р РµР°Р»РёР·Р°С†РёСЏ Р°Р»РіРѕСЂРёС‚РјР° СЃ РІРёР·СѓР°Р»РёР·Р°С†РёРµР№
 def solve_tsp_visual(distance_matrix):
     n = len(distance_matrix)
     dp = {}
@@ -101,8 +100,8 @@ def solve_tsp_visual(distance_matrix):
 
     node_positions = generate_node_positions(n, WIDTH, HEIGHT)
 
-    # Инициализация
-    step_info = ["Инициализация:"]
+    # РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ
+    step_info = ["РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ:"]
     for i in range(1, n):
         if distance_matrix[0][i] != float('inf'):
             dp[(frozenset([i]), i)] = distance_matrix[0][i]
@@ -111,13 +110,13 @@ def solve_tsp_visual(distance_matrix):
     draw_graph(distance_matrix, node_positions, visited_edges, step_info=step_info)
     pygame.time.wait(1000)
 
-    # Перебор всех подмножеств
+    # РџРµСЂРµР±РѕСЂ РІСЃРµС… РїРѕРґРјРЅРѕР¶РµСЃС‚РІ
     for r in range(2, n):
         for subset in itertools.combinations(range(1, n), r):
             subset_set = frozenset(subset)
             current_nodes = list(subset)
-            best_edge_in_subset = None  # Для выделения самого выгодного пути
-            best_cost_in_subset = float('inf')  # Стоимость самого выгодного пути
+            best_edge_in_subset = None  # Р”Р»СЏ РІС‹РґРµР»РµРЅРёСЏ СЃР°РјРѕРіРѕ РІС‹РіРѕРґРЅРѕРіРѕ РїСѓС‚Рё
+            best_cost_in_subset = float('inf')  # РЎС‚РѕРёРјРѕСЃС‚СЊ СЃР°РјРѕРіРѕ РІС‹РіРѕРґРЅРѕРіРѕ РїСѓС‚Рё
             current_edges = []
             for j in subset:
                 prev_subset = subset_set - {j}
@@ -136,26 +135,26 @@ def solve_tsp_visual(distance_matrix):
                 dp[(subset_set, j)] = best_cost
                 parent[(subset_set, j)] = best_prev_city
 
-                # Обновляем шаг и выделяем обрабатываемые рёбра
-                step_info = [f"Обрабатываем подмножество: {subset}", f"{best_prev_city} -> {j}: {best_cost}"]
+                # РћР±РЅРѕРІР»СЏРµРј С€Р°Рі Рё РІС‹РґРµР»СЏРµРј РѕР±СЂР°Р±Р°С‚С‹РІР°РµРјС‹Рµ СЂС‘Р±СЂР°
+                step_info = [f"РћР±СЂР°Р±Р°С‚С‹РІР°РµРј РїРѕРґРјРЅРѕР¶РµСЃС‚РІРѕ: {subset}", f"{best_prev_city} -> {j}: {best_cost}"]
                 draw_graph(distance_matrix, node_positions, visited_edges, current_edges, current_nodes, step_info=step_info)
                 pygame.time.wait(500)
 
-                # Выделяем самый выгодный путь внутри подмножества
+                # Р’С‹РґРµР»СЏРµРј СЃР°РјС‹Р№ РІС‹РіРѕРґРЅС‹Р№ РїСѓС‚СЊ РІРЅСѓС‚СЂРё РїРѕРґРјРЅРѕР¶РµСЃС‚РІР°
                 if best_cost < best_cost_in_subset:
                     best_cost_in_subset = best_cost
                     best_edge_in_subset = (best_prev_city, j)
 
-                # После обработки возвращаем цвет ребра
+                # РџРѕСЃР»Рµ РѕР±СЂР°Р±РѕС‚РєРё РІРѕР·РІСЂР°С‰Р°РµРј С†РІРµС‚ СЂРµР±СЂР°
                 draw_graph(distance_matrix, node_positions, visited_edges, current_nodes=current_nodes, step_info=step_info)
                 pygame.time.wait(500)
                 visited_edges.add((best_prev_city, j))
 
-            # Выделение самого выгодного пути
+            # Р’С‹РґРµР»РµРЅРёРµ СЃР°РјРѕРіРѕ РІС‹РіРѕРґРЅРѕРіРѕ РїСѓС‚Рё
             if best_edge_in_subset:
                 visited_edges.add(best_edge_in_subset)
 
-    # Завершаем маршрут
+    # Р—Р°РІРµСЂС€Р°РµРј РјР°СЂС€СЂСѓС‚
     final_subset = frozenset(range(1, n))
     best_cost = float('inf')
     last_city = None
@@ -166,7 +165,7 @@ def solve_tsp_visual(distance_matrix):
                 best_cost = cost
                 last_city = i
 
-    # Восстановление маршрута
+    # Р’РѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ РјР°СЂС€СЂСѓС‚Р°
     route = [0]
     subset_set = final_subset
     city = last_city
@@ -177,14 +176,14 @@ def solve_tsp_visual(distance_matrix):
         next_city = parent.get((subset_set, city), None)
         subset_set = subset_set - {city}
         if next_city is not None:
-            # Добавляем ребро в двух направлениях
+            # Р”РѕР±Р°РІР»СЏРµРј СЂРµР±СЂРѕ РІ РґРІСѓС… РЅР°РїСЂР°РІР»РµРЅРёСЏС…
             final_path_edges.append((next_city, city))
-            final_path_edges.append((city, next_city))  # Для симметрии
+            final_path_edges.append((city, next_city))  # Р”Р»СЏ СЃРёРјРјРµС‚СЂРёРё
         city = next_city
 
 
-    # Отобразить финальный путь
-    step_info = [f"Итоговый путь: {' -> '.join(map(str, route))}", f"Стоимость: {best_cost}"]
+    # РћС‚РѕР±СЂР°Р·РёС‚СЊ С„РёРЅР°Р»СЊРЅС‹Р№ РїСѓС‚СЊ
+    step_info = [f"РС‚РѕРіРѕРІС‹Р№ РїСѓС‚СЊ: {' -> '.join(map(str, route))}", f"РЎС‚РѕРёРјРѕСЃС‚СЊ: {best_cost}"]
     draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges, step_info=step_info)
     return best_cost, route
 
@@ -197,7 +196,7 @@ def main():
     final_path_edges = []
     visited_edges = set()
     cost = 0
-    graph_surface = None  # Поверхность для графа
+    graph_surface = None  # РџРѕРІРµСЂС…РЅРѕСЃС‚СЊ РґР»СЏ РіСЂР°С„Р°
 
     while running:
         for event in pygame.event.get():
@@ -211,35 +210,35 @@ def main():
                         node_positions = generate_node_positions(len(distance_matrix), WIDTH, HEIGHT)
                         cost, final_path = solve_tsp_visual(distance_matrix)
                         final_path_edges = [(final_path[i], final_path[i + 1]) for i in range(len(final_path) - 1)]
-                        # Учет симметрии рёбер
+                        # РЈС‡РµС‚ СЃРёРјРјРµС‚СЂРёРё СЂС‘Р±РµСЂ
                         final_path_edges += [(j, i) for i, j in final_path_edges]
                         algorithm_finished = True
 
-                        # Создаем поверхность с графом
+                        # РЎРѕР·РґР°РµРј РїРѕРІРµСЂС…РЅРѕСЃС‚СЊ СЃ РіСЂР°С„РѕРј
                         graph_surface = pygame.Surface((WIDTH, HEIGHT))
                         draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges=final_path_edges)
-                        graph_surface.blit(screen, (0, 0))  # Копируем на экран
+                        graph_surface.blit(screen, (0, 0))  # РљРѕРїРёСЂСѓРµРј РЅР° СЌРєСЂР°РЅ
 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
 
         if not algorithm_finished:
             screen.fill(BACKGROUND_COLOR)
-            # Отрисовка кнопки
+            # РћС‚СЂРёСЃРѕРІРєР° РєРЅРѕРїРєРё
             pygame.draw.rect(screen, (0, 255, 0), (WIDTH // 2 - 100, HEIGHT // 2 - 25, 200, 50))
-            button_text = font.render("Загрузить матрицу", True, (0, 0, 0))
+            button_text = font.render("Р—Р°РіСЂСѓР·РёС‚СЊ РјР°С‚СЂРёС†Сѓ", True, (0, 0, 0))
             screen.blit(button_text, (WIDTH // 2 - button_text.get_width() // 2, HEIGHT // 2 - button_text.get_height() // 2))
         else:
-            # Отображаем граф (из сохраненной поверхности)
+            # РћС‚РѕР±СЂР°Р¶Р°РµРј РіСЂР°С„ (РёР· СЃРѕС…СЂР°РЅРµРЅРЅРѕР№ РїРѕРІРµСЂС…РЅРѕСЃС‚Рё)
             if graph_surface:
                 screen.blit(graph_surface, (0, 0))
 
-            # Сообщение после завершения
-            completion_text = font.render("Алгоритм завершён. Нажмите ESC для выхода.", True, (255, 255, 255))
+            # РЎРѕРѕР±С‰РµРЅРёРµ РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ
+            completion_text = font.render("РђР»РіРѕСЂРёС‚Рј Р·Р°РІРµСЂС€С‘РЅ. РќР°Р¶РјРёС‚Рµ ESC РґР»СЏ РІС‹С…РѕРґР°.", True, (255, 255, 255))
             screen.blit(completion_text, (WIDTH // 2 - completion_text.get_width() // 2, HEIGHT - 70))
-            path_text = font.render(f"Путь: {' -> '.join(map(str, final_path))}", True, (255, 255, 255))
+            path_text = font.render(f"РџСѓС‚СЊ: {' -> '.join(map(str, final_path))}", True, (255, 255, 255))
             screen.blit(path_text, (WIDTH // 2 - path_text.get_width() // 2, HEIGHT - 40))
-            cost_text = font.render(f"Стоимость: {cost}", True, (255, 255, 255))
+            cost_text = font.render(f"РЎС‚РѕРёРјРѕСЃС‚СЊ: {cost}", True, (255, 255, 255))
             screen.blit(cost_text, (WIDTH // 2 - cost_text.get_width() // 2, HEIGHT - 10))
 
         pygame.display.flip()
