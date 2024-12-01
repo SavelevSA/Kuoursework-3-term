@@ -37,7 +37,7 @@ def read_distance_matrix(file_path):
         return matrix
 
 # Рисование графа
-def draw_graph(matrix, node_positions, visited_edges, current_edges=None, current_nodes=None, final_path_edges=None, step_info=None):
+def draw_graph(matrix, node_positions, visited_edges, current_edges=None, current_nodes=None, final_path_edges=None, step_info=None, best_costs_per_r=None):
     screen.fill(BACKGROUND_COLOR)
 
     # Рисуем рёбра
@@ -74,7 +74,16 @@ def draw_graph(matrix, node_positions, visited_edges, current_edges=None, curren
             screen.blit(step_text, (10, y_offset))
             y_offset += FONT_SIZE + 5
 
+    # Отображаем список стоимости для каждого r
+    if best_costs_per_r:
+        y_offset = HEIGHT // 2 + 100  # Начальная позиция под графом
+        for cost_info in best_costs_per_r:
+            cost_text = font.render(cost_info, True, TEXT_COLOR)
+            screen.blit(cost_text, (10, y_offset))
+            y_offset += FONT_SIZE + 5
+
     pygame.display.flip()
+
 
 # Генерация позиций узлов
 def generate_node_positions(n, width, height):
@@ -104,6 +113,7 @@ def solve_tsp_visual(distance_matrix, animation_speed=200):
     visited_edges = set()
 
     node_positions = generate_node_positions(n, WIDTH, HEIGHT)
+    best_costs_per_r = []  # Хранение стоимости для каждого r
 
     # Инициализация
     step_info = ["Инициализация:"]
@@ -113,15 +123,13 @@ def solve_tsp_visual(distance_matrix, animation_speed=200):
             parent[(frozenset([i]), i)] = 0
             step_info.append(f"0 -> {i}: {distance_matrix[0][i]}")
     draw_graph(distance_matrix, node_positions, visited_edges, step_info=step_info)
-    pygame.time.wait(animation_speed+5500)
+    pygame.time.wait(animation_speed)
 
     # Перебор всех подмножеств
     for r in range(2, n):
         for subset in itertools.combinations(range(1, n), r):
             subset_set = frozenset(subset)
             current_nodes = list(subset)
-            best_edge_in_subset = None  # Для выделения самого выгодного пути
-            best_cost_in_subset = float('inf')  # Стоимость самого выгодного пути
             current_edges = []
             for j in subset:
                 prev_subset = subset_set - {j}
@@ -142,22 +150,17 @@ def solve_tsp_visual(distance_matrix, animation_speed=200):
 
                 # Обновляем шаг и выделяем обрабатываемые рёбра
                 step_info = [f"Обрабатываем подмножество: {subset}", f"{best_prev_city} -> {j}: {best_cost}"]
-                draw_graph(distance_matrix, node_positions, visited_edges, current_edges, current_nodes, step_info=step_info)
+                draw_graph(distance_matrix, node_positions, visited_edges, current_edges, current_nodes, step_info=step_info, best_costs_per_r=best_costs_per_r)
                 pygame.time.wait(animation_speed)
 
-                # Выделяем самый выгодный путь внутри подмножества
-                if best_cost < best_cost_in_subset:
-                    best_cost_in_subset = best_cost
-                    best_edge_in_subset = (best_prev_city, j)
-
-                # После обработки возвращаем цвет ребра
-                draw_graph(distance_matrix, node_positions, visited_edges, current_nodes=current_nodes, step_info=step_info)
-                pygame.time.wait(animation_speed)
                 visited_edges.add((best_prev_city, j))
 
-            # Выделение самого выгодного пути
-            if best_edge_in_subset:
-                visited_edges.add(best_edge_in_subset)
+        # Вычисление наиболее выгодного пути после обработки всех подмножеств текущего размера
+        best_path, best_cost = find_current_best_path(dp, parent, r, n)
+        best_costs_per_r.append(f"{r} вершин: {best_cost}")
+        step_info = [f"Наилучший путь для r = {r}: {' -> '.join(map(str, best_path))}", f"Стоимость: {best_cost}"]
+        draw_graph(distance_matrix, node_positions, visited_edges, step_info=step_info, best_costs_per_r=best_costs_per_r)
+        pygame.time.wait(animation_speed+1500)
 
     # Завершаем маршрут
     final_subset = frozenset(range(1, n))
@@ -185,10 +188,36 @@ def solve_tsp_visual(distance_matrix, animation_speed=200):
 
     # Отобразить финальный путь
     step_info = [f"Итоговый путь: {' -> '.join(map(str, route))}", f"Стоимость: {best_cost}"]
-    draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges=final_path_edges, step_info=step_info)
+    draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges=final_path_edges, step_info=step_info, best_costs_per_r=best_costs_per_r)
     pygame.time.wait(animation_speed)
 
     return best_cost, route
+
+
+# Функция для нахождения текущего наилучшего пути
+def find_current_best_path(dp, parent, r, n):
+    best_cost = float('inf')
+    best_path = []
+    for subset in itertools.combinations(range(1, n), r):
+        subset_set = frozenset(subset)
+        for j in subset:
+            if (subset_set, j) in dp:
+                cost = dp[(subset_set, j)]
+                if cost < best_cost:
+                    best_cost = cost
+                    best_path = reconstruct_path(parent, subset_set, j)
+    return best_path, best_cost
+
+# Вспомогательная функция для восстановления пути
+def reconstruct_path(parent, subset_set, last_node):
+    path = []
+    while subset_set:
+        path.append(last_node)
+        next_node = parent.get((subset_set, last_node), None)
+        subset_set = subset_set - {last_node}
+        last_node = next_node
+    return list(reversed(path))
+
 
 
 def main():
@@ -235,8 +264,24 @@ def main():
                         draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges=final_path_edges)
                         graph_surface.blit(screen, (0, 0))  # Копируем на экран
 
+                # Кнопка "Рассчитать быстро"
+                if not algorithm_finished and WIDTH // 2 - 100 <= x <= WIDTH // 2 + 100 and HEIGHT // 2 + 120 <= y <= HEIGHT // 2 + 180:
+                    distance_matrix = load_matrix_via_dialog()
+                    if distance_matrix:
+                        node_positions = generate_node_positions(len(distance_matrix), WIDTH, HEIGHT)
+                        cost, final_path = solve_tsp_quick(distance_matrix)
+                        final_path_edges = [(final_path[i], final_path[i + 1]) for i in range(len(final_path) - 1)]
+                        # Учет симметрии рёбер
+                        final_path_edges += [(j, i) for i, j in final_path_edges]
+                        algorithm_finished = True
+
+                        # Создаем поверхность с графом
+                        graph_surface = pygame.Surface((WIDTH, HEIGHT))
+                        draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges=final_path_edges)
+                        graph_surface.blit(screen, (0, 0))  # Копируем на экран
+
                 # Кнопка "Выход"
-                if not algorithm_finished and WIDTH // 2 - 50 <= x <= WIDTH // 2 + 50 and HEIGHT // 2 + 150 <= y <= HEIGHT // 2 + 175:
+                if not algorithm_finished and WIDTH // 2 - 50 <= x <= WIDTH // 2 + 50 and HEIGHT // 2 + 200 <= y <= HEIGHT // 2 + 240:
                     running = False
 
             elif event.type == pygame.KEYDOWN:
@@ -265,17 +310,22 @@ def main():
             button_text = font.render("Загрузить матрицу", True, (0, 0, 0))
             screen.blit(button_text, (WIDTH // 2 - button_text.get_width() // 2, HEIGHT // 2 - button_text.get_height() // 2))
 
+            # Кнопка "Рассчитать быстро"
+            pygame.draw.rect(screen, (0, 0, 255), (WIDTH // 2 - 100, HEIGHT // 2 + 130, 200, 50))
+            quick_button_text = font.render("Рассчитать быстро", True, (255, 255, 255))
+            screen.blit(quick_button_text, (WIDTH // 2 - quick_button_text.get_width() // 2, HEIGHT // 2 + 140 + quick_button_text.get_height() // 2))
+
             # Кнопка "Выход"
-            pygame.draw.rect(screen, (255, 0, 0), (WIDTH // 2 - 50, HEIGHT // 2 + 150, 100, 50))
+            pygame.draw.rect(screen, (255, 0, 0), (WIDTH // 2 - 50, HEIGHT // 2 + 200, 100, 50))
             exit_text = font.render("Выход", True, (0, 0, 0))
-            screen.blit(exit_text, (WIDTH // 2 - exit_text.get_width() // 2, HEIGHT // 2 + 160 + exit_text.get_height() // 2))
+            screen.blit(exit_text, (WIDTH // 2 - exit_text.get_width() // 2, HEIGHT // 2 + 210 + exit_text.get_height() // 2))
 
             # Поле ввода скорости
             pygame.draw.rect(screen, (255, 255, 255), input_box, 2 if speed_active else 1)
             input_text = font.render(speed_input, True, (255, 255, 255))
-            screen.blit(input_text, (input_box.x + 5, input_box.y + 5))
+            screen.blit(input_text, (input_box.x + 5, input_box.y + 10))
             label_text = font.render("Скорость (мс):", True, (255, 255, 255))
-            screen.blit(label_text, (input_box.x - label_text.get_width() - 10, input_box.y + 5))
+            screen.blit(label_text, (input_box.x - label_text.get_width() + 90, input_box.y - 15))
         else:
             # Отображение финального графа
             if graph_surface:
@@ -287,15 +337,64 @@ def main():
             path_text = font.render(f"Путь: {' -> '.join(map(str, final_path))}", True, (255, 255, 255))
             screen.blit(path_text, (WIDTH // 2 - path_text.get_width() // 2, HEIGHT - 40))
             cost_text = font.render(f"Стоимость: {cost}", True, (255, 255, 255))
-            screen.blit(cost_text, (WIDTH // 2 - cost_text.get_width() // 2, HEIGHT - 10))
+            screen.blit(cost_text, (WIDTH // 2 - cost_text.get_width() // 2, HEIGHT - 20))
 
         pygame.display.flip()
 
     pygame.quit()
 
+# Алгоритм без визуализации
+def solve_tsp_quick(distance_matrix):
+    import itertools
 
+    n = len(distance_matrix)
+    dp = {}
+    parent = {}
 
+    # Инициализация
+    for i in range(1, n):
+        dp[(frozenset([i]), i)] = distance_matrix[0][i]
+        parent[(frozenset([i]), i)] = 0
 
+    # Перебор всех подмножеств
+    for r in range(2, n):
+        for subset in itertools.combinations(range(1, n), r):
+            subset_set = frozenset(subset)
+            for j in subset:
+                prev_subset = subset_set - {j}
+                best_cost = float('inf')
+                best_prev_city = None
+                for k in subset:
+                    if k != j:
+                        cost = dp[(prev_subset, k)] + distance_matrix[k][j]
+                        if cost < best_cost:
+                            best_cost = cost
+                            best_prev_city = k
+                dp[(subset_set, j)] = best_cost
+                parent[(subset_set, j)] = best_prev_city
+
+    # Завершаем маршрут
+    final_subset = frozenset(range(1, n))
+    best_cost = float('inf')
+    last_city = None
+    for i in range(1, n):
+        cost = dp[(final_subset, i)] + distance_matrix[i][0]
+        if cost < best_cost:
+            best_cost = cost
+            last_city = i
+
+    # Восстановление маршрута
+    route = [0]
+    subset_set = final_subset
+    city = last_city
+    while city != 0:
+        route.append(city)
+        next_city = parent[(subset_set, city)]
+        subset_set -= {city}
+        city = next_city
+    route.append(0)
+
+    return best_cost, route
 
 
 if __name__ == "__main__":
