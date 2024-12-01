@@ -219,7 +219,49 @@ def reconstruct_path(parent, subset_set, last_node):
     return list(reversed(path))
 
 
+import random
 
+# Новый функционал: ввод матрицы с генерацией случайных весов
+def create_random_matrix():
+    import tkinter.simpledialog as simpledialog
+    tk.Tk().withdraw()
+    
+    # Ввод количества вершин
+    num_nodes = simpledialog.askinteger("Ввод количества вершин", "Введите количество вершин:")
+    if not num_nodes or num_nodes <= 0:
+        return None
+
+    # Ввод количества рёбер
+    num_edges = simpledialog.askinteger("Ввод количества рёбер", "Введите количество рёбер:")
+    if not num_edges or num_edges <= 0:
+        return None
+
+    # Инициализация пустой матрицы
+    distance_matrix = [[float('inf') if i != j else 0 for j in range(num_nodes)] for i in range(num_nodes)]
+
+    # Генерация случайных рёбер
+    edges = set()
+    while len(edges) < num_edges:
+        i, j = random.randint(0, num_nodes - 1), random.randint(0, num_nodes - 1)
+        if i != j and (i, j) not in edges and (j, i) not in edges:
+            weight = random.randint(1, 50)
+            distance_matrix[i][j] = weight
+            distance_matrix[j][i] = weight
+            edges.add((i, j))
+
+    # Сохранение в файл
+    save_path = filedialog.asksaveasfilename(defaultextension=".txt",
+                                             filetypes=(("Text files", "*.txt"), ("All files", "*.*")),
+                                             title="Сохранить матрицу как")
+    if save_path:
+        with open(save_path, 'w') as f:
+            for row in distance_matrix:
+                f.write(" ".join('inf' if x == float('inf') else str(x) for x in row) + "\n")
+        print(f"Матрица успешно сохранена в файл {save_path}")
+
+    return distance_matrix
+
+# Изменения в основном цикле
 def main():
     running = True
     distance_matrix = None
@@ -244,6 +286,12 @@ def main():
                 else:
                     speed_active = False
 
+                # Кнопка "Создать матрицу"
+                if not algorithm_finished and WIDTH // 2 - 100 <= x <= WIDTH // 2 + 100 and HEIGHT // 2 - 75 <= y <= HEIGHT // 2 - 25:
+                    distance_matrix = create_random_matrix()
+                    if distance_matrix:
+                        node_positions = generate_node_positions(len(distance_matrix), WIDTH, HEIGHT)
+
                 # Кнопка "Загрузить матрицу"
                 if not algorithm_finished and WIDTH // 2 - 100 <= x <= WIDTH // 2 + 100 and HEIGHT // 2 - 25 <= y <= HEIGHT // 2 + 25:
                     try:
@@ -265,7 +313,7 @@ def main():
                         graph_surface.blit(screen, (0, 0))  # Копируем на экран
 
                 # Кнопка "Рассчитать быстро"
-                if not algorithm_finished and WIDTH // 2 - 100 <= x <= WIDTH // 2 + 100 and HEIGHT // 2 + 120 <= y <= HEIGHT // 2 + 180:
+                if not algorithm_finished and WIDTH // 2 - 100 <= x <= WIDTH // 2 + 100 and HEIGHT // 2 + 130 <= y <= HEIGHT // 2 + 180:
                     distance_matrix = load_matrix_via_dialog()
                     if distance_matrix:
                         node_positions = generate_node_positions(len(distance_matrix), WIDTH, HEIGHT)
@@ -305,6 +353,11 @@ def main():
         # Отображение начального окна
         if not algorithm_finished:
             screen.fill(BACKGROUND_COLOR)
+            # Кнопка "Создать матрицу"
+            pygame.draw.rect(screen, (100, 100, 255), (WIDTH // 2 - 100, HEIGHT // 2 - 75, 200, 50))
+            create_button_text = font.render("Создать матрицу", True, (255, 255, 255))
+            screen.blit(create_button_text, (WIDTH // 2 - create_button_text.get_width() // 2, HEIGHT // 2 - 65))
+
             # Кнопка "Загрузить матрицу"
             pygame.draw.rect(screen, (0, 255, 0), (WIDTH // 2 - 100, HEIGHT // 2 - 25, 200, 50))
             button_text = font.render("Загрузить матрицу", True, (0, 0, 0))
@@ -331,7 +384,6 @@ def main():
             if graph_surface:
                 screen.blit(graph_surface, (0, 0))
 
-            # Сообщение после завершения
             completion_text = font.render("Алгоритм завершён. Нажмите ESC для возврата.", True, (255, 255, 255))
             screen.blit(completion_text, (WIDTH // 2 - completion_text.get_width() // 2, HEIGHT - 70))
             path_text = font.render(f"Путь: {' -> '.join(map(str, final_path))}", True, (255, 255, 255))
@@ -339,9 +391,8 @@ def main():
             cost_text = font.render(f"Стоимость: {cost}", True, (255, 255, 255))
             screen.blit(cost_text, (WIDTH // 2 - cost_text.get_width() // 2, HEIGHT - 20))
 
-        pygame.display.flip()
+        pygame.display.update()
 
-    pygame.quit()
 
 # Алгоритм без визуализации
 def solve_tsp_quick(distance_matrix):
