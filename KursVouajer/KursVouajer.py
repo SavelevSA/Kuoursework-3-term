@@ -9,10 +9,10 @@ WIDTH, HEIGHT = 800, 600
 NODE_RADIUS = 20
 FONT_SIZE = 18
 LINE_COLOR = (200, 200, 200)
-CURRENT_EDGE_COLOR = (255, 0, 0)
-CURRENT_NODE_COLOR = (255, 255, 0)
+CURRENT_EDGE_COLOR = (234,197,5)
+CURRENT_NODE_COLOR = (234,197,5)
 FINAL_PATH_COLOR = (0, 255, 0)
-NODE_COLOR = (0, 0, 255)
+NODE_COLOR = (2,121,205)
 TEXT_COLOR = (0, 255, 0)
 BACKGROUND_COLOR = (30, 30, 30)
 
@@ -21,6 +21,11 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Визуализация TSP")
 font = pygame.font.Font(None, FONT_SIZE)
+
+# Поле ввода скорости
+input_box = pygame.Rect(WIDTH // 2 - 50, HEIGHT // 2 + 50, 100, 30)
+speed_input = "200"  # Начальное значение задержки (в миллисекундах)
+speed_active = False  # Статус активности поля
 
 # Чтение файла с матрицей
 def read_distance_matrix(file_path):
@@ -92,7 +97,7 @@ def load_matrix_via_dialog():
     return None
 
 # Реализация алгоритма с визуализацией
-def solve_tsp_visual(distance_matrix):
+def solve_tsp_visual(distance_matrix, animation_speed=200):
     n = len(distance_matrix)
     dp = {}
     parent = {}
@@ -108,7 +113,7 @@ def solve_tsp_visual(distance_matrix):
             parent[(frozenset([i]), i)] = 0
             step_info.append(f"0 -> {i}: {distance_matrix[0][i]}")
     draw_graph(distance_matrix, node_positions, visited_edges, step_info=step_info)
-    pygame.time.wait(1000)
+    pygame.time.wait(animation_speed+5500)
 
     # Перебор всех подмножеств
     for r in range(2, n):
@@ -138,7 +143,7 @@ def solve_tsp_visual(distance_matrix):
                 # Обновляем шаг и выделяем обрабатываемые рёбра
                 step_info = [f"Обрабатываем подмножество: {subset}", f"{best_prev_city} -> {j}: {best_cost}"]
                 draw_graph(distance_matrix, node_positions, visited_edges, current_edges, current_nodes, step_info=step_info)
-                pygame.time.wait(500)
+                pygame.time.wait(animation_speed)
 
                 # Выделяем самый выгодный путь внутри подмножества
                 if best_cost < best_cost_in_subset:
@@ -147,7 +152,7 @@ def solve_tsp_visual(distance_matrix):
 
                 # После обработки возвращаем цвет ребра
                 draw_graph(distance_matrix, node_positions, visited_edges, current_nodes=current_nodes, step_info=step_info)
-                pygame.time.wait(500)
+                pygame.time.wait(animation_speed)
                 visited_edges.add((best_prev_city, j))
 
             # Выделение самого выгодного пути
@@ -170,22 +175,21 @@ def solve_tsp_visual(distance_matrix):
     subset_set = final_subset
     city = last_city
     final_path_edges = []
-
     while city is not None:
         route.append(city)
         next_city = parent.get((subset_set, city), None)
         subset_set = subset_set - {city}
         if next_city is not None:
-            # Добавляем ребро в двух направлениях
             final_path_edges.append((next_city, city))
-            final_path_edges.append((city, next_city))  # Для симметрии
         city = next_city
-
 
     # Отобразить финальный путь
     step_info = [f"Итоговый путь: {' -> '.join(map(str, route))}", f"Стоимость: {best_cost}"]
-    draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges, step_info=step_info)
+    draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges=final_path_edges, step_info=step_info)
+    pygame.time.wait(animation_speed)
+
     return best_cost, route
+
 
 def main():
     running = True
@@ -197,18 +201,30 @@ def main():
     visited_edges = set()
     cost = 0
     graph_surface = None  # Поверхность для графа
+    global speed_input, speed_active
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN and not algorithm_finished:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                if WIDTH // 2 - 100 <= x <= WIDTH // 2 + 100 and HEIGHT // 2 - 25 <= y <= HEIGHT // 2 + 25:
+                # Проверка нажатия на поле ввода скорости
+                if input_box.collidepoint(event.pos):
+                    speed_active = True
+                else:
+                    speed_active = False
+
+                # Кнопка "Загрузить матрицу"
+                if not algorithm_finished and WIDTH // 2 - 100 <= x <= WIDTH // 2 + 100 and HEIGHT // 2 - 25 <= y <= HEIGHT // 2 + 25:
+                    try:
+                        animation_speed = max(100, int(speed_input))  # Минимальная скорость 100 мс
+                    except ValueError:
+                        animation_speed = 200  # По умолчанию
                     distance_matrix = load_matrix_via_dialog()
                     if distance_matrix:
                         node_positions = generate_node_positions(len(distance_matrix), WIDTH, HEIGHT)
-                        cost, final_path = solve_tsp_visual(distance_matrix)
+                        cost, final_path = solve_tsp_visual(distance_matrix, animation_speed)
                         final_path_edges = [(final_path[i], final_path[i + 1]) for i in range(len(final_path) - 1)]
                         # Учет симметрии рёбер
                         final_path_edges += [(j, i) for i, j in final_path_edges]
@@ -219,22 +235,54 @@ def main():
                         draw_graph(distance_matrix, node_positions, visited_edges, final_path_edges=final_path_edges)
                         graph_surface.blit(screen, (0, 0))  # Копируем на экран
 
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
+                # Кнопка "Выход"
+                if not algorithm_finished and WIDTH // 2 - 50 <= x <= WIDTH // 2 + 50 and HEIGHT // 2 + 150 <= y <= HEIGHT // 2 + 175:
+                    running = False
 
+            elif event.type == pygame.KEYDOWN:
+                # Возврат к первому окну
+                if event.key == pygame.K_ESCAPE and algorithm_finished:
+                    algorithm_finished = False
+                    distance_matrix = None
+                    final_path = []
+                    node_positions = []
+                    final_path_edges = []
+                    visited_edges = set()
+                    cost = 0
+
+                # Обработка ввода текста
+                if speed_active:
+                    if event.key == pygame.K_BACKSPACE:
+                        speed_input = speed_input[:-1]  # Удаление символа
+                    elif event.unicode.isdigit():  # Только цифры
+                        speed_input += event.unicode
+
+        # Отображение начального окна
         if not algorithm_finished:
             screen.fill(BACKGROUND_COLOR)
-            # Отрисовка кнопки
+            # Кнопка "Загрузить матрицу"
             pygame.draw.rect(screen, (0, 255, 0), (WIDTH // 2 - 100, HEIGHT // 2 - 25, 200, 50))
             button_text = font.render("Загрузить матрицу", True, (0, 0, 0))
             screen.blit(button_text, (WIDTH // 2 - button_text.get_width() // 2, HEIGHT // 2 - button_text.get_height() // 2))
+
+            # Кнопка "Выход"
+            pygame.draw.rect(screen, (255, 0, 0), (WIDTH // 2 - 50, HEIGHT // 2 + 150, 100, 50))
+            exit_text = font.render("Выход", True, (0, 0, 0))
+            screen.blit(exit_text, (WIDTH // 2 - exit_text.get_width() // 2, HEIGHT // 2 + 160 + exit_text.get_height() // 2))
+
+            # Поле ввода скорости
+            pygame.draw.rect(screen, (255, 255, 255), input_box, 2 if speed_active else 1)
+            input_text = font.render(speed_input, True, (255, 255, 255))
+            screen.blit(input_text, (input_box.x + 5, input_box.y + 5))
+            label_text = font.render("Скорость (мс):", True, (255, 255, 255))
+            screen.blit(label_text, (input_box.x - label_text.get_width() - 10, input_box.y + 5))
         else:
-            # Отображаем граф (из сохраненной поверхности)
+            # Отображение финального графа
             if graph_surface:
                 screen.blit(graph_surface, (0, 0))
 
             # Сообщение после завершения
-            completion_text = font.render("Алгоритм завершён. Нажмите ESC для выхода.", True, (255, 255, 255))
+            completion_text = font.render("Алгоритм завершён. Нажмите ESC для возврата.", True, (255, 255, 255))
             screen.blit(completion_text, (WIDTH // 2 - completion_text.get_width() // 2, HEIGHT - 70))
             path_text = font.render(f"Путь: {' -> '.join(map(str, final_path))}", True, (255, 255, 255))
             screen.blit(path_text, (WIDTH // 2 - path_text.get_width() // 2, HEIGHT - 40))
@@ -244,6 +292,8 @@ def main():
         pygame.display.flip()
 
     pygame.quit()
+
+
 
 
 
